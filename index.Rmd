@@ -1,0 +1,474 @@
+---
+title: "Parcial PAQ-03 (1000026), ID examen: 9"
+author: Nicolás David Parra Vargas, Valentina Piedrahita Guerrero, Karen Dayana Espíndola Castañeda
+date: "29 de noviembre de 2021"
+output: html_document
+---
+
+```{r}
+storeWarn<- getOption("warn")
+options(warn = -1)
+options(repr.plot.width=8, repr.plot.height=6)
+if (!require("pracma")) install.packages("pracma")
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("plotly")) install.packages("plotly")
+if (!require("nleqslv")) install.packages("nleqslv")
+library(RColorBrewer)
+```
+
+## Primer punto
+
+Se define la función myplot para la construcción de la curva de titulación con los datos que se proveen en el problema, a su vez como utilidad para construir las gráficas para la primera y segunda derivada de la curva de titulación.
+```{r}
+myplot <- function(df){
+  p <- ggplot(df) +
+    aes(x = x, y = y) +
+    geom_line(size = 1, colour = "#d95f02") +
+    scale_y_continuous("pH", 
+                       breaks = seq(2, 12, by = 1)) +
+    scale_x_continuous("Volumen NaOH (mL)", 
+                       breaks = seq(0, 40, by = 5)) +
+    coord_cartesian(xlim = c(0, 40), ylim = c(2, 12)) +
+    theme_bw() + 
+    theme(text = element_text(size = 14))
+  return(p)}
+```
+
+Se procede a construir la primera curva de titulación
+```{r}
+c.HnA <- 0.335
+pKa <- 4.919
+pKa.NH4 <- 9.24
+Ka <- 10^-pKa
+c.NH3 <- 0.308
+V.A <- 20
+V.H2O <- 50
+cal.curva <- function(pH, V.T){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  V.Total <- V.A + V.T + V.H2O
+  a.HnA <- Ka / (H3O + Ka)
+  A <- (c.HnA * a.HnA * V.A) / V.Total
+  NH4 <- c.NH3 * V.T / V.Total
+  H3O - A + NH4 - HO
+}
+V.T <- seq(0, 100, by = 0.01)
+pH <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+df <- data.frame(x = V.T, y = pH)
+myplot(df)
+```
+Se procede a construir las tablas para la primera y la segunda derivada, con los datos del volumen de el titulante y el pH, definiendo sus ejes
+```{r}
+p.d <- gradient(df$y, h1 = df$x)
+s.d <- gradient(p.d, h1 = df$x)
+pf <- data.frame(df, p.d, s.d)
+```
+
+Ahora se construyen las gráficas de la curva de titulación y la primera y segunda derivada de esta
+```{r}
+names(pf) <- c("x", "pH", "Primera derivada", "Segunda derivada")
+
+pf <- pf %>% 
+  pivot_longer(names_to = "key", values_to = "y", -x)
+
+p <- ggplot(pf) +
+  aes(x = x, y = y, colour = key) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer("Analito", 
+                     palette = "Set1") +
+  labs(x = "Volumen de titulante", y = "pH") +
+  theme_bw() + 
+  theme(legend.text.align = 0,
+        text = element_text(size = 12),
+        legend.position = "none",
+        legend.background = element_blank()) +
+  facet_wrap(~key, scales="free_y",
+             nrow = 3,
+             strip.position = "left")
+ggplotly(p)
+```
+Tomamos dos puntos de la gráfica de la primera y segunda derivada para hacer una estimación más exacta del volumen de equivalencia, para esto la función con la que se definieron las gráficas nos permite ver puntos cercanos a el máximo de la primera y segunda derivada
+```{r}
+x.1 <- c(21.73, 21.77)
+y.1 = s.d[df$x == x.1]
+inter.1 <- data.frame(x = x.1, y = y.1)
+V.eq.1 <- predict(lm(x~y, inter.1), data.frame(y = 0))
+V.eq.1
+```
+21.75 mL corresponde al volumen de equivalencia con el que se manejará el resto de el problema, multiplicando el volumen de equivalencia por escalares definidos en el parcial, de esta forma usaremos la función previamente definida para la construcción de la curva de titulación para definir el pH en los puntos especificados
+# a)
+```{r}
+V.eq.a <- V.eq.1 * 0
+V.T <- V.eq.a
+pH.a <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.a
+```
+# b)
+```{r}
+V.eq.b <- V.eq.1 * 0.25
+V.T <- V.eq.b
+pH.b <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.b
+```
+# c)
+```{r}
+V.eq.c <- V.eq.1 * 0.5
+V.T <- V.eq.c
+pH.c <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.c
+```
+# d)
+```{r}
+V.eq.d <- V.eq.1 * 0.75
+V.T <- V.eq.d
+pH.d <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.d
+```
+# e)
+```{r}
+V.eq.e <- V.eq.1 * 1
+V.T <- V.eq.e
+pH.e <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.e
+```
+# f)
+```{r}
+V.eq.f <- V.eq.1 * 1.25
+V.T <- V.eq.f
+pH.f <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.f
+```
+# g)
+```{r}
+V.eq.g <- V.eq.1 * 1.5
+V.T <- V.eq.g
+pH.g <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.g
+```
+# h)
+```{r}
+V.eq.h <- V.eq.1 * 1.75
+V.T <- V.eq.h
+pH.h <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.h
+```
+# i)
+```{r}
+V.eq.i <- V.eq.1 * 2
+V.T <- V.eq.i
+pH.i <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.i
+```
+# j)
+```{r}
+V.eq.j <- V.eq.1 * 2.25
+V.T <- V.eq.j
+pH.j <- sapply(V.T, function(x)
+  uniroot(cal.curva, V.T = x, interval = c(0, 14), tol = 1e-14)$root)
+pH.j
+```
+## Segundo punto
+Se define la función alp para el cálculo de los alpha de las especies de el ácido monoprótico con el que se preparará la solución reguladora. Para esto, como el pH que se desea es de 6,263 se escoge el pKa de 6, el más aproximado e idóneo para el cálculo de la cantidad de sustancia requerida del ácido débil monoprótico para la disolución reguladora. Asimismo, se define la carga para la especie que se formará A-, y se realiza la suma de los alpha multiplicada por su carga para generar el alpha que acompañará la concentración total en el balance de masas.
+```{r}
+alp = function(pH, pKa){
+  n = length(pKa)
+  num = 10^(-(pH*(n:0) + cumsum(c(0, pKa))))
+  num / sum(num)
+}
+pKa = 6
+carga= c(0, -1)
+sum(alp(6.263, pKa) * carga)
+```
+Se define la concentración del ión oxonio e hidroxilo, y se hace la resta para tenerlo presente a la hora de plantear la matriz.
+```{r}
+pH= 6.263
+H3O = 10^-pH
+HO = 1e-14/H3O
+H3O - HO 
+```
+Se le suma una unidad al pH para calcular la capacidad amortiguadora frente a bases, luego se calcula nuevamente la concentración de iones hidronio e hidroxilo para el planteamiento de la matriz.
+```{r}
+pKa = 6
+carga= c(0, -1)
+sum(alp(7.263, pKa) * carga)
+```
+Con los valores de alpha que multiplican la concentración total para cada balance de cargas y la diferencia de iones hidroxilo e hidronio. Asimismo una variable desconocida es la concentración del hidróxido de sodio (iones sodio), y con el planteamiento de la matriz se busca hallar el valor de la concentración total y la concentración de hidróxido de sodio.
+```{r}
+A=matrix(c(1, 1, -0.6469319, -0.9482486), ncol=2)
+B=c(0, -0.191 - 10^-pH+10^(-14+pH))
+solve(A, B)
+```
+Se verifica las concentraciones de las especies con el balance de cargas a pH = 6.263
+```{r}
+pH = 6.263
+C.Total = 0.6338863
+C.NaOH = 0.4100813
+Ka = 10^-pKa
+Na = C.NaOH
+a.HnA = Ka / (H3O + Ka)
+A = C.Total * a.HnA
+H3O + Na - A - HO 
+```
+El valor de el balance de cargas es muy aproximado a 0, lo que hace la estimación de los valores de concentración total y de hidróxido de sodio bastante acertados.
+
+Posteriormente se procede a plantear el balance de cargas asumiendo el cálculo de la capacidad amortiguadora frente a ácidos
+```{r}
+pH = 5.263
+Ka = 10^-6
+C.Total = 0.6338863
+C.NaOH = 0.4100813
+
+  H3O = 10^-pH
+  HO = 1e-14 / H3O
+  Na = C.NaOH
+  a.HnA = Ka / (H3O + Ka)
+  A = C.Total * a.HnA
+  BCa = H3O + Na - A - HO 
+  BCa
+```
+Se finaliza el desarrollo del segundo punto calculando las moles de cada especie que son necesarias para realizar la solución reguladora a las condiciones indicadas. El volumen que se requiere de solución reguladora es de 2.500 litros
+```{r}
+ V.Total = 2.5
+n.NaOH = C.NaOH * V.Total
+n.NaOH
+n.acido = C.Total * V.Total
+n.acido
+```
+## Tercer punto
+
+Se procede a plantear las ecuaciones para el problema. La función se define con el fin de hallar la variable de concentración de (NH4)2 SO4. Esta función se plantea con el balance de masas y cargas, a considerar que el ión amonio no tiene en cuenta la concentración de amoniaco multiplicada por su grado de disociación debido a que se disocia completamente, a excepción del compuesto (NH4)2 SO4, el cual se debe multiplicar por 2 ya que un mol de la sustancia provee 2 moles de ión amonio.
+
+```{r}
+pH <- 8.371
+c.NH3 <- 0.262 
+pKa <- 9.244
+Ka <- 10^-pKa
+V.Total <- 1
+problema = function(c.NH4SO4){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  SO4 <- c.NH4SO4
+  a.NH4 <- H3O / (H3O + Ka)
+  NH4 <- c.NH3 + (2*c.NH4SO4*a.NH4)
+  H3O + NH4 - 2*SO4 - HO
+}
+c.NH4SO4 = uniroot(problema, interval = c(0, 1000), tol= 1e-14)$root
+c.NH4SO4
+```
+Se calcula la masa de (NH4)2 SO4 requerida al 85.3% para la preparación de la solución reguladora
+```{r}
+NH4SO4 <- c.NH4SO4 * V.Total * 132.13952 
+NH4SO4 * 85.3/100
+```
+Para calcular la capacidad amortiguadora frente a bases se procede a sumar una unidad al pH de la solución reguladora y se incluye la capacidad amortiguadora frente a bases en el balance de cargas, con el fin de plantear una función que halle el valor de la capacidad amortiguadora frente a bases.
+```{r}
+pH <- 9.371
+c.NH3 <- 0.262 
+c.NH4SO4 <- 1.108838
+pKa <- 9.244
+Ka <- 10^-pKa
+V.Total <- 1
+problema.2=function(BCb){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  SO4 <- c.NH4SO4
+  a.NH4 <- H3O / (H3O + Ka)
+  NH4 <- c.NH3 + (2*c.NH4SO4*a.NH4)
+  H3O + NH4 - 2*SO4 - HO + BCb
+}
+BCb = uniroot(problema.2, interval = c(0, 1000), tol= 1e-14)$root
+BCb
+```
+Se plantea el mismo procedimiento para hallar la capacidad amortiguadora frente a ácidos, restando una unidad al valor original de pH de la solución reguladora.
+```{r}
+pH <- 7.371
+c.NH3 <- 0.262 
+c.NH4SO4 <- 1.108838
+pKa <- 9.244
+Ka <- 10^-pKa
+V.Total <- 1
+  problema.3=function(BCa){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  SO4 <- c.NH4SO4
+  a.NH4 <- H3O / (Ka + H3O)
+  NH4 <- c.NH3 + (2*c.NH4SO4*a.NH4)
+  H3O + NH4 - 2*SO4 - HO - BCa
+  }
+BCa = uniroot(problema.3, interval = c(0, 1000), tol= 1e-14)$root
+BCa
+
+```
+## Cuarto punto
+Para hallar las concentraciones con las que se preparó la solución reguladora (en especial el acetato de sodio) se procede a plantear el balance de masas y cargas, así como la función que dependa de la variable de concentración de acetato de sodio.
+```{r}
+c.RNO2 <- 0.0196
+c.Total <- 0.380
+pH <- 3.906
+pKa <- 4.74
+Ka <- 10^-pKa
+problema = function(c.CH3COONa){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  a.CH3COO <- H3O / (Ka + H3O)
+  CH3COO <- c.Total * a.CH3COO
+  Na <- c.CH3COONa
+  H3O + Na - CH3COO - HO
+}
+c.CH3COONa = uniroot(problema, interval= c(0, 1000), tol=1e-14 )$root
+c.CH3COONa
+```
+Con la concentración de acetato y del nitrocompuesto se procede a realizar el balance de masas y cargas para calcular la pH con una función dependiente de esta. Sin embargo, como el compuesto nitrogenado se sometió a un proceso de reducción electrolítica se debe tener en cuenta la concentración de iones plata, esto se calcula a partir de la ecuación balanceada y la concentración de las otras especies.
+```{r}
+c.RNO2 <- 0.0196
+v.Total = 0.3 
+mol.RNO2 = c.RNO2 * v.Total
+mol.RNO2
+```
+La relación estequiométrica es 1 a 4 respecto al compuesto nitrogenado.
+```{r}
+c.Ag = mol.RNO2 * 4
+c.Ag
+```
+Con las concentraciones de las distintas especies para calcular el pH final de la disolución, se plantea el balance de cargas y masas con una función que calcule el pH.
+```{r}
+c.RNO2 <- 0.0196
+c.Total <- 0.380
+c.CH3COONa <- 0.3313035
+c.Ag <- 0.02352
+pKa <- 4.74
+Ka <- 10^-pKa
+problema = function(pH){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  a.CH3COO <- H3O / (Ka + H3O)
+  CH3COO <- c.Total * a.CH3COO
+  Na <- c.CH3COONa
+  Ag <- c.Ag
+  RNH2OH <- c.RNO2
+  H3O + Na - CH3COO - HO +  RNH2OH + Ag
+}
+pH = uniroot(problema, interval= c(0, 14), tol=1e-14 )$root
+pH
+```
+## Quinto punto
+
+El ácido oxálico tiene varios pKa, por tanto, se define la función alp para el cálculo de los alphas de las distintas especies derivadas de este ácido.
+```{r}
+alp = function(pH, pKa){
+  n = length(pKa)
+  num = 10^(-(pH*(n:0) + cumsum(c(0, pKa))))
+  num / sum(num)
+}
+```
+Se plantea el balance de cargas y masas con una función que calcule la concentración de oxalato de potasio requerida para la disolución.
+```{r}
+pH <- 5.085
+pKa <- c(1.268, 4.268)
+carga= c(0, -1, -2)
+c.HClO4 = 0.4747 
+
+problema = function(C.oxal){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  ClO4 <- c.HClO4 *0.010 / (0.500)
+  K <- 2*C.oxal  
+  a.oxal <- alp(pH, pKa)
+  oxal <- C.oxal * a.oxal 
+  H3O + K - ClO4 - HO + sum(carga * oxal)
+}
+C.oxal = uniroot(problema, interval = c(0, 1000), tol= 1e-14)$root
+C.oxal
+OxalK <- C.oxal * 166.2156
+OxalK
+```
+Se realiza una verificación de los datos obtenidos con el valor de la concentración de oxalato de potasio. Como el oxalato de potasio posee dos potasios por cada mol de oxalato se plantea la concentración del ión potasio como dos veces la concentración de oxalato de potasio.
+```{r}
+pKa <- c(1.268, 4.268)
+carga= c(0, -1, -2)
+c.HClO4 = 0.4747 
+C.oxal = 0.07170586
+problema = function(pH){
+  H3O <- 10^-pH
+  HO <- 1e-14 / H3O
+  ClO4 <- c.HClO4 *0.010 / (0.500)
+  K <- 2*C.oxal  
+  a.oxal <- alp(pH, pKa)
+  oxal <- C.oxal * a.oxal 
+  H3O + K - ClO4 - HO + sum(carga * oxal)
+}
+pH = uniroot(problema, interval = c(0, 1000), tol= 1e-14)$root
+pH
+```
+## Sexto punto
+
+Como se va a manejar el ácido fosfórico (con múltiples variables de pKa) se plantea la función alp para el cálculo de los alpha de las especies que corresponden para el ácido fosfórico.
+```{r}
+alp = function(pH, pKa){
+  n = length(pKa)
+  num = 10^(-(pH*(n:0) + cumsum(c(0, pKa))))
+  num / sum(num)
+}
+```
+Se procede a plantear el balance de cargas y masas con una función que nos permita calcular el volumen de hidróxido de sodio, teniendo en cuenta todos los factores de dilución para las concentraciones de hidróxido de sodio y el ácido fosfórico.
+```{r}
+pH <- 7.350
+pKa <- c(2.150, 7.210, 12.33)
+carga= c(0, -1, -2, -3)
+
+problema = function(pH, V.H3PO4){
+  H3O <- 10^-pH
+  HO = 1e-14 / H3O
+  a.H3PO4 = alp(pH, pKa)
+  V.NaOH = 1 - V.H3PO4
+  c.H3PO4 = 0.2563 * V.H3PO4  
+  c.NaOH = 1.345* V.NaOH
+  H3PO4 <- c.H3PO4 * a.H3PO4
+  Na = c.NaOH 
+  H3O + Na + sum(carga * H3PO4) - HO
+}
+V.H3PO4 = uniroot(problema, pH = 7.350, interval= c(0, 1000), tol=1e-14 )$root
+V.H3PO4
+V.NaOH = 1 - V.H3PO4
+V.NaOH
+```
+El volumen se encuentra en litros debido a que se manejaron los balances con unidades de litros.
+```{r}
+V.H3PO4.L = V.H3PO4*1000
+V.H3PO4.L
+V.NaOH.L = V.NaOH*1000
+V.NaOH.L
+```
+Se procede a realizar la verificación con los valores obtenidos de volumen de hidróxido de sodio y de ácido fosfórico, planteando un balance de cargas y masas con una función que calcule el pH.
+```{r}
+pKa <- c(2.150, 7.210, 12.33)
+carga= c(0, -1, -2, -3)
+V.H3PO4 = 0.7686023
+v.NaOH = 1 - V.H3PO4
+problema = function(pH){
+  H3O <- 10^-pH
+  HO = 1e-14 / H3O
+  a.H3PO4 = alp(pH, pKa)
+  V.NaOH = 1 - V.H3PO4
+  c.H3PO4 = 0.2563 * V.H3PO4  
+  c.NaOH = 1.345* V.NaOH
+  H3PO4 <- c.H3PO4 * a.H3PO4
+  Na = c.NaOH 
+  H3O + Na + sum(carga * H3PO4) - HO
+}
+pH = uniroot(problema, interval= c(0, 1000), tol=1e-14 )$root
+pH 
+```
+
+

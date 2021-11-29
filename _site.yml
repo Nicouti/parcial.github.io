@@ -1,0 +1,11 @@
+name: "my-website"
+output_dir: "."
+navbar:
+  title: "PAQ"
+  left:
+    - text: "Parcial"
+      href: index.html
+output:
+  html_document:
+    theme: moon
+    highlight: textmate
